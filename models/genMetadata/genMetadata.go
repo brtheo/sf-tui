@@ -21,15 +21,30 @@ type viewState string
 const (
 	IDLE viewState = "IDLE"
 	ERR  viewState = "ERR"
-	DONE viewState = "DONE"
+)
+type triggerState string
+const (
+	TRIGGER_NAME triggerState = "IDLE"
+	TRIGGER_SOBJECT triggerState = "NEED_SOBJECT"
 )
 
 type Model struct {
 	input textinput.Model
 	metadataType MetadataType
-	output string
-	name string
+	output, name, sobject string
 	state viewState
+	triggerState triggerState
+}
+
+func (m Model) sfCmdAndLeave(args []string) (Model, tea.Cmd) {
+	return m, tea.Sequence(
+		func() tea.Cmd {
+			return func() tea.Msg {
+				exec.Command("sf", args...).Run()
+				return nil
+			}
+		}(), tea.Quit,
+	)
 }
 
 func generateLWC(name, path string) []string {
@@ -56,6 +71,7 @@ func New(metadataType MetadataType, output string) Model {
 		metadataType: metadataType,
 		output: output,
 		state: IDLE,
+		triggerState: TRIGGER_NAME,
 	}
 }
 
@@ -69,27 +85,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 				case tea.KeyEnter:
 				  value := strings.TrimSpace(m.input.Value())
-					if value == "" {
+			 		if value == "" {
 						m.state = ERR
 						return m, nil
 					}
-					m.name = m.input.Value()
 
-					return m, tea.Sequence(
-						func() tea.Cmd {
-							return func() tea.Msg {
-								switch m.metadataType {
-								case LWC:
-									return exec.Command("sf", generateLWC(value, m.output)...).Run()
-								case ApexClass:
-									return exec.Command("sf", generateApexClass(value, m.output)...).Run()
-								case ApexTrigger:
-									return exec.Command("sf", generateApexTrigger(value, "", m.output)...).Run()
-								}
-								return nil
+					if(m.metadataType == ApexTrigger && m.triggerState == TRIGGER_NAME){
+						m.sobject = value
+					}	else {
+						m.name = value
+					}
+
+					switch m.metadataType {
+						case LWC:
+							return m.sfCmdAndLeave(generateLWC(m.name, m.output))
+						case ApexClass:
+							return m.sfCmdAndLeave(generateApexClass(m.name, m.output))
+						case ApexTrigger:
+							switch m.triggerState {
+								case TRIGGER_NAME:
+									m.state = IDLE
+									m.triggerState = TRIGGER_SOBJECT
+									m.input.Placeholder = "Enter SObject Name"
+									m.input.Reset()
+									return m, nil
+								case TRIGGER_SOBJECT:
+									return m.sfCmdAndLeave(generateApexTrigger(m.name, m.sobject, m.output))
 							}
-						}(), tea.Quit,
-					)
+					}
 			}
 	}
 	var inputCmd tea.Cmd
@@ -112,8 +135,6 @@ func (m Model) View() string {
 		return input
 	case ERR:
 		return lipgloss.JoinVertical(lipgloss.Left, input, errMsg)
-	case DONE:
-		return "Metadata created successfully"
 	}
 	return m.input.View()
 }
