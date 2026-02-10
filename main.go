@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/alexflint/go-arg"
 	genMetadata "github.com/brtheo/sf-tui/models/genMetadata"
+	metadataRetriever "github.com/brtheo/sf-tui/models/metadataRetriever"
 	orgPicker "github.com/brtheo/sf-tui/models/orgPicker"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -12,6 +13,7 @@ type ModelType string
 const (
 	OrgPicker ModelType = "org-picker"
 	GenMetadata ModelType = "gen"
+	MetadataRetriever ModelType = "metadata-retriever"
 )
 
 var args struct {
@@ -28,13 +30,15 @@ type Model struct {
 
 func New(modelType ModelType, p *arg.Parser) Model {
 	switch modelType {
-	case GenMetadata:
-		if args.Output == "" || args.MetadataType == "" {
-			p.Fail("Missing required arguments.\nMust provide output path and metadata type.\nSee --help for more information.")
-		}
-		return Model{subModel: genMetadata.New(args.MetadataType, args.Output)}
-	case OrgPicker:
-		return Model{subModel: orgPicker.New(globalStyle.GetFrameSize())}
+		case GenMetadata:
+			if args.Output == "" || args.MetadataType == "" {
+				p.Fail("Missing required arguments.\nMust provide output path and metadata type.\nSee --help for more information.")
+			}
+			return Model{subModel: genMetadata.New(args.MetadataType, args.Output)}
+		case OrgPicker:
+			return Model{subModel: orgPicker.New(globalStyle.GetFrameSize())}
+		case MetadataRetriever:
+			return Model{subModel: metadataRetriever.New()}
 	}
 	return Model{}
 }
