@@ -26,8 +26,8 @@ var (
 
 func checkbox(defaultOrg bool) string {
 	var checkbox string
-	if checkbox = "[ ]"; defaultOrg {
-		checkbox = "[]"
+	if checkbox = "[  ]"; defaultOrg {
+		checkbox = "[✅]"
 	}
 	return checkboxStyle.Render(checkbox)
 }
@@ -64,8 +64,9 @@ func newOrgItemDelegate() *orgItemDelegate {
 func(d orgItemDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	orgItem, _ := item.(orgItem)
 
-	verticalStack := lipgloss.JoinVertical(lipgloss.Left, alias(orgItem), location(orgItem))
-	listItem := lipgloss.JoinHorizontal(lipgloss.Left, checkbox(orgItem.isDefaultOrg), verticalStack)
+	horizontalStack := fmt.Sprintf("%s => %s", alias(orgItem), location(orgItem))
+	// verticalStack := lipgloss.JoinVertical(lipgloss.Left, alias(orgItem), location(orgItem))
+	listItem := lipgloss.JoinHorizontal(lipgloss.Left, checkbox(orgItem.isDefaultOrg), horizontalStack)
 
 	if index == m.Cursor() {
 		listItem = activeStyle.Render(listItem)
@@ -80,7 +81,7 @@ func(d orgItemDelegate) Height() int {
 }
 
 func(d orgItemDelegate) Spacing() int {
-	return 1
+	return 0
 }
 
 func(d orgItemDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {

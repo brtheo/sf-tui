@@ -7,7 +7,7 @@ import (
 	"time"
 )
 var ORG_LIST = []string{"org", "list", "--json"}
-var SET_ORG = []string{"config", "set", "--global","target-org"}
+var SET_ORG = []string{"config", "set","target-org"}
 
 type viewState string
 type tickMsg time.Time
@@ -116,25 +116,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case tea.KeyEnter:
 					m.currentOrgAlias = m.list.SelectedItem().(orgItem).alias
 					toggleCheckboxes(m.list)
-
-					return m, tea.Sequence(
-						func() tea.Cmd {
-							return func() tea.Msg {
-								SET_ORG = append(SET_ORG, m.currentOrgAlias)
-
-								return exec.Command("sf", SET_ORG...).Run()
+					return m, func() tea.Cmd {
+						return func() tea.Msg {
+							SET_ORG = append(SET_ORG, m.currentOrgAlias)
+							err := exec.Command("sf", SET_ORG...).Run()
+							if err != nil {
+								fmt.Println("Error setting org:", err)
 							}
-						}(),
-						tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
-	            return setStateMsg("DONE")
-	          }),
-					)
+							m.state = DONE
+							return setStateMsg("DONE")
+						}
+					}()
 				case tea.KeyCtrlC, tea.KeyEsc:
 					return m, tea.Quit
 			}
 			case setStateMsg:
-				m.state = DONE
-				return m, tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
+				return m, tea.Tick(time.Second, func(t time.Time) tea.Msg {
            return tickMsg(t)
          })
 			case tickMsg:
@@ -152,7 +149,7 @@ func (m Model) View() string {
 	case IDLE:
 		return m.list.View()
 	case DONE:
-		return fmt.Sprintf("Default org is now : %s", m.currentOrgAlias)
+		return fmt.Sprintf("Default ☁️ org is now : %s", m.currentOrgAlias)
 	}
 	return ""
 }
