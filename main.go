@@ -22,7 +22,7 @@ var args struct {
 	Output string `arg:"-o, --output" help:"Path to force-app"`
 }
 
-var globalStyle = lipgloss.NewStyle().Margin(1, 1)
+var globalStyle = lipgloss.NewStyle().Margin(0, 1)
 
 type Model struct {
 	subModel tea.Model
@@ -38,7 +38,7 @@ func New(modelType ModelType, p *arg.Parser) Model {
 		case OrgPicker:
 			return Model{subModel: orgPicker.New(globalStyle.GetFrameSize())}
 		case MetadataRetriever:
-			return Model{subModel: metadataRetriever.New()}
+			return Model{subModel: metadataRetriever.New(globalStyle.GetFrameSize())}
 	}
 	return Model{}
 }

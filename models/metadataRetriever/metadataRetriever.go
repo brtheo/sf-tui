@@ -7,14 +7,28 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var METADATA_LIST = []string{"org", "list","metadata","--json","--metadata-type"}
 
-type ColumnID int
+type FetchState int
+const (
+	Fetch_Idle FetchState = iota
+	Fetch_Fetching
+	Fetch_Error
+	Fetch_Done
+)
 
+type WizardStep int
+const (
+	PickMetadataType WizardStep = iota
+	PickMetadataRecord
+)
+
+type ColumnID int
 const (
 	Col_Checkbox ColumnID = iota
 	Col_FullName
@@ -41,9 +55,13 @@ var (
 type Model struct {
 	textInput     textinput.Model
 	table         table.Model
+	list list.Model
 	originalRows  []table.Row
 	filterColumn  ColumnID
 	selectedRows  map[int]bool
+	fetchState FetchState
+	wizardStep WizardStep
+	frameSize []int
 }
 
 func (m Model) Init() tea.Cmd {
@@ -55,12 +73,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
 			m.table.SetHeight(msg.Height - 7)
+			h, v := m.frameSize[0], m.frameSize[1]
+			m.list.SetSize(msg.Width-h, msg.Height-v)
 		case tea.KeyMsg:
 			switch msg.Type {
 			case tea.KeyCtrlC, tea.KeyEsc:
 				return m, tea.Quit
 			case tea.KeyTab:
 				m.filterColumn = (m.filterColumn + 2) % 5
+			case tea.KeyLeft:
+				m.wizardStep = (m.wizardStep + 1) % 2
+			case tea.KeyRight:
+				m.wizardStep = (m.wizardStep - 1) % 2
 			case tea.KeyEnter:
 				val, ok := m.selectedRows[m.table.Cursor()]
 				if !ok {
@@ -75,14 +99,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	searchTerm := strings.ToLower(m.textInput.Value())
 	var filteredRows []table.Row
 
-	for i, row := range m.originalRows {
-		targetValue := strings.ToLower(row[int(m.filterColumn)])
+	for i, originalRow := range m.originalRows {
+		targetValue := strings.ToLower(originalRow[int(m.filterColumn)])
 		if strings.Contains(targetValue, searchTerm) {
-			checkbox := "[  ]"
+			checkbox := "🞅"
 			if m.selectedRows[i] {
-				checkbox = "[✅]"
+				checkbox = "🞊"
 			}
-			filteredRows = append(filteredRows, table.Row{checkbox, row[1], row[2], row[3], row[4], row[5]})
+			newRow := table.Row{checkbox}
+			newRow = append(newRow, originalRow[1:]...)
+			filteredRows = append(filteredRows, newRow)
 		}
 	}
 
@@ -95,6 +121,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	switch m.wizardStep {
+		case PickMetadataType:
+			return fmt.Sprintf(
+				"Choose metadata type\n%s\n%s",
+				m.textInput.View(),
+				m.list.View(),
+			)
+		case PickMetadataRecord:
+			return fmt.Sprintf(
+				" Filtering by: %s (Press [Tab] to switch)\n Input: %s\n\n%s\n",
+				highlightStyle.Render(m.filterColumn.String()),
+				m.textInput.View(),
+				baseStyle.Render(m.table.View()),
+			)
+	}
 	return fmt.Sprintf(
 		" Filtering by: %s (Press [Tab] to switch)\n Input: %s\n\n%s\n",
 		highlightStyle.Render(m.filterColumn.String()),
@@ -103,13 +144,14 @@ func (m Model) View() string {
 	)
 }
 
-func New() Model {
+func New(frameSize... int) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
 	ti.Focus()
 
+
 	columns := []table.Column{
-		{Title: "", Width: 5},
+		{Title: "", Width: 3},
 		{Title: "Metadata name", Width: 40},
 		{Title: "Created by", Width: 15},
 		{Title: "Created at", Width: 30},
@@ -130,7 +172,7 @@ func New() Model {
 	for _, field := range metadata.Result {
 		rows = append(rows,
 			table.Row {
-				"[  ]",
+				"🞅",
 				field.FullName,
 				field.CreatedByName,
 				field.CreatedDate.String(),
@@ -147,11 +189,17 @@ func New() Model {
 		table.WithHeight(7),
 	)
 
+	list := list.New(MetadataTypes, list.NewDefaultDelegate(), 0, 0)
+
 	return Model{
 		textInput:    ti,
+		list: list,
 		table:        t,
 		originalRows: rows,
 		filterColumn: Col_FullName, // Default filter
 		selectedRows: make(map[int]bool),
+		fetchState:   Fetch_Idle,
+		wizardStep:   PickMetadataType,
+		frameSize: frameSize,
 	}
 }
