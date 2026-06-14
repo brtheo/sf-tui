@@ -7,6 +7,13 @@ import (
 	"github.com/brtheo/sf-tui/models/mdRetriever/shared"
 )
 
+var TypesRequiringFolder = map[string]string{
+	"EmailTemplate": "EmailTemplate",
+	"Dashboard":     "Dashboard",
+	"Document":      "Document",
+	"Report":        	"Report",
+}
+
 type HasPickedTypeMsg string
 type HasPickedTypeRequiringFolderMsg string
 
@@ -53,7 +60,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case tea.KeyEnter:
 					metadataType := m.List.SelectedItem().(MdItem).title
 					toggleCheckboxes(m.List)
-					if metadataType == "EmailTemplate" {
+					if metadataType, ok := TypesRequiringFolder[metadataType]; ok {
 						return m, func() tea.Cmd {
 							return func() tea.Msg {
 								return HasPickedTypeRequiringFolderMsg(metadataType)

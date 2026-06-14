@@ -16,6 +16,7 @@ import (
 
 func (m Model) getRowsWithCheckboxes (searchTerm string) (filteredRows []table.Row) {
 	m.parsePackageXML()
+
 	for _, originalRow := range m.originalRows {
 		targetValue := strings.ToLower(originalRow[int(m.filterColumn)])
 
@@ -60,6 +61,7 @@ func (m Model) fetchFolders() []string {
 
 func (m Model) getMetadataRows(folderName string) (rows []table.Row) {
 	args := []string{"org", "list", "metadata", "--json", "--metadata-type", m.SelectedMdType}
+	// m.setKeyIfNil(m.SelectedMdType)
 	if folderName != "" {
 		args = append(args, "--folder", folderName)
 	}
@@ -102,7 +104,7 @@ func (m Model) setKeyIfNil(key string) {
 	var val, ok = m.selectedRows[key]
 	if !ok {
 		val = make(map[string]bool)
-		m.selectedRows[m.SelectedMdType] = val
+		m.selectedRows[key] = val
 	}
 }
 
@@ -160,23 +162,24 @@ func (m Model) generatePackageXML() (string, error) {
 	return result.String(), nil
 }
 
-func (m Model) parsePackageXML()  {
-		data, err := os.ReadFile("./manifest/package.xml")
-		if err != nil {
-			fmt.Println("Error reading package.xml:", err)
-		}
+func (m Model) parsePackageXML() error  {
+	data, err := os.ReadFile("./manifest/package.xml")
+	if err != nil {
+		return err
+	}
 
-		var pkg Package
-		err = xml.Unmarshal(data, &pkg)
-		if err != nil {
-			fmt.Println("Error parsing package.xml:", err)
-		}
+	var pkg Package
+	err = xml.Unmarshal(data, &pkg)
+	if err != nil {
+		return err
+	}
 
-		for _, types := range pkg.Types {
-			mdType := types.Name
-			m.setKeyIfNil(mdType)
-			for _, member := range types.Members {
-				m.selectedRows[mdType][member] = true
-			}
+	for _, types := range pkg.Types {
+		mdType := types.Name
+		m.setKeyIfNil(mdType)
+		for _, member := range types.Members {
+			m.selectedRows[mdType][member] = true
 		}
+	}
+	return nil
 }

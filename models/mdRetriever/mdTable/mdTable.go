@@ -64,7 +64,6 @@ type Model struct {
 	filterColumn  ColumnID
 	selectedRows  map[string]map[string]bool
 	SelectedMdType string
-	SelectedFolderName string
 	isFetching bool
 }
 
