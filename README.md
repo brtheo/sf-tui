@@ -57,7 +57,7 @@ Wizard to authorize an org.
 
 - [*] gen aura related stuff
 - [ ] gen vf page
-- [ ] gen project 
+- [*] gen project 
 - [ ] gen test suite
 - [*] authorize an org/dev hub
 - [ ] get apex logs
