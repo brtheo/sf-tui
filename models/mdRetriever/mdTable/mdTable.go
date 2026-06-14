@@ -15,6 +15,7 @@ import (
 
 type HasFetchedRowsMsg []table.Row
 type HasSelectedMdTypeMsg string
+type HasSelectedMdTypeRequiringFolderMsg string
 
 var columns = []table.Column{
 	{Title: "", Width: 1},
@@ -63,6 +64,7 @@ type Model struct {
 	filterColumn  ColumnID
 	selectedRows  map[string]map[string]bool
 	SelectedMdType string
+	SelectedFolderName string
 	isFetching bool
 }
 
@@ -104,6 +106,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 		case HasSelectedMdTypeMsg:
 			return m.handleSelectedMdType(msg)
+
+		case HasSelectedMdTypeRequiringFolderMsg:
+			return m.handleSelectedMdTypeRequiringFolder(msg)
+
 		case HasFetchedRowsMsg:
 			m.Table.SetRows(msg)
 			m.originalRows = msg
@@ -120,7 +126,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	searchTerm := strings.ToLower(m.filterInput.Value())
 
-	m.Table.SetRows( m.getRowsWithCheckboxes(searchTerm) )
+	m.Table.SetRows(m.getRowsWithCheckboxes(searchTerm))
 
 	m.Table, tableCmd = m.Table.Update(msg)
 	m.filterInput, filterInputCmd = m.filterInput.Update(msg)

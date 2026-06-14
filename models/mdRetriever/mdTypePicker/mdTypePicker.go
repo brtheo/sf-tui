@@ -8,7 +8,7 @@ import (
 )
 
 type HasPickedTypeMsg string
-
+type HasPickedTypeRequiringFolderMsg string
 
 type Model struct {
 	List list.Model
@@ -53,6 +53,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case tea.KeyEnter:
 					metadataType := m.List.SelectedItem().(MdItem).title
 					toggleCheckboxes(m.List)
+					if metadataType == "EmailTemplate" {
+						return m, func() tea.Cmd {
+							return func() tea.Msg {
+								return HasPickedTypeRequiringFolderMsg(metadataType)
+							}
+						}()
+					}
 					return m, func() tea.Cmd {
 						return func() tea.Msg {
 							return HasPickedTypeMsg(metadataType)

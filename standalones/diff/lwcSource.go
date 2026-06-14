@@ -10,6 +10,7 @@ func UnmarshalLwcSource(data []byte) (LwcSource, error) {
 
 func (r *LwcSource) Marshal() ([]byte, error) {
 	return json.Marshal(r)
+
 }
 
 type LwcSource struct {

@@ -6,6 +6,14 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+func (m Model) handleSelectedMdTypeRequiringFolder(msg HasSelectedMdTypeRequiringFolderMsg) (tea.Model, tea.Cmd) {
+	m.SelectedMdType = string(msg)
+	m.isFetching = true
+	return m, tea.Batch(
+		m.fetchMdListWithFolder,
+		m.spinner.Tick,
+	)
+}
 
 func (m Model) handleSelectedMdType(msg HasSelectedMdTypeMsg) (tea.Model, tea.Cmd) {
 	m.SelectedMdType = string(msg)

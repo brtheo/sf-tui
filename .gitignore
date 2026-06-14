@@ -1,3 +1,4 @@
 bin/sf-tui-linux-amd64
 bin/sf-tui-windows-amd64
 bin/sf-tui-windows-amd64.exe
+manifest/*

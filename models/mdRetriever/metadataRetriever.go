@@ -48,6 +48,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			mdTableModel, mdTableCmd := m.mdTable.Update(mdTable.HasSelectedMdTypeMsg(string(msg)))
 			m.mdTable = mdTableModel.(mdTable.Model)
 			return m, mdTableCmd
+		case mdTypePicker.HasPickedTypeRequiringFolderMsg:
+			m.selectedMetadataType = string(msg)
+			m.wizardStep = PickMetadataRecord
+			var mdTableCmd tea.Cmd
+			mdTableModel, mdTableCmd := m.mdTable.Update(mdTable.HasSelectedMdTypeRequiringFolderMsg(string(msg)))
+			m.mdTable = mdTableModel.(mdTable.Model)
+			return m, mdTableCmd
 	}
 
 	switch m.wizardStep {

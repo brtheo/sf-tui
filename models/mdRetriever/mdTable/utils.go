@@ -8,12 +8,14 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"encoding/xml"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func (m Model) getRowsWithCheckboxes (searchTerm string) (filteredRows []table.Row) {
+	m.parsePackageXML()
 	for _, originalRow := range m.originalRows {
 		targetValue := strings.ToLower(originalRow[int(m.filterColumn)])
 
@@ -34,9 +36,34 @@ func (m Model) getRowsWithCheckboxes (searchTerm string) (filteredRows []table.R
 
 
 func (m Model) fetchMdList() tea.Msg {
+	return HasFetchedRowsMsg(m.getMetadataRows(""))
+}
+
+func (m Model) fetchFolders() []string {
 	raw, err := exec.Command(
-		"sf","org","list","metadata","--json","--metadata-type", m.SelectedMdType,
+		"sf","org","list","metadata","--json","--metadata-type", "EmailFolder",
 	).Output()
+	if err != nil {
+		fmt.Println(err)
+	}
+	folders, err := UnmarshalMetadata(raw)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var folderNames = []string{}
+	for _, folder := range folders.Result {
+		folderNames = append(folderNames, folder.FullName)
+	}
+	return folderNames
+}
+
+func (m Model) getMetadataRows(folderName string) (rows []table.Row) {
+	args := []string{"org", "list", "metadata", "--json", "--metadata-type", m.SelectedMdType}
+	if folderName != "" {
+		args = append(args, "--folder", folderName)
+	}
+	raw, err := exec.Command("sf", args...).Output()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -44,12 +71,9 @@ func (m Model) fetchMdList() tea.Msg {
 	if err != nil {
 		fmt.Println(err)
 	}
-
 	sort.Slice(metadata.Result, func(i, j int) bool {
 		return metadata.Result[i].LastModifiedDate.After(metadata.Result[j].LastModifiedDate)
 	})
-
-	var rows = []table.Row{}
 	for _, field := range metadata.Result {
 		rows = append(rows,
 			table.Row {
@@ -61,6 +85,15 @@ func (m Model) fetchMdList() tea.Msg {
 				field.LastModifiedDate.String(),
 			},
 		)
+	}
+	return rows
+}
+
+func (m Model) fetchMdListWithFolder() tea.Msg {
+	var rows = []table.Row{}
+	folderNames := m.fetchFolders()
+	for _, folderName := range folderNames {
+		rows = append(rows, m.getMetadataRows(folderName)...)
 	}
 	return HasFetchedRowsMsg(rows)
 }
@@ -102,7 +135,7 @@ func (m Model) generatePackageXML() (string, error) {
 			}
 		}
 	}
-	apiVersion := "60.0"
+	apiVersion := "66.0"
 
 	data, err := os.ReadFile("./sfdx-project.json")
 	if err == nil {
@@ -125,4 +158,25 @@ func (m Model) generatePackageXML() (string, error) {
 	}
 
 	return result.String(), nil
+}
+
+func (m Model) parsePackageXML()  {
+		data, err := os.ReadFile("./manifest/package.xml")
+		if err != nil {
+			fmt.Println("Error reading package.xml:", err)
+		}
+
+		var pkg Package
+		err = xml.Unmarshal(data, &pkg)
+		if err != nil {
+			fmt.Println("Error parsing package.xml:", err)
+		}
+
+		for _, types := range pkg.Types {
+			mdType := types.Name
+			m.setKeyIfNil(mdType)
+			for _, member := range types.Members {
+				m.selectedRows[mdType][member] = true
+			}
+		}
 }
